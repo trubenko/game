@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+    <script src="../jquery.js"></script>
+</head>
+<body>
+
+
+<canvas id="game" height="300" width="300" style="border: 1px solid rgba(138, 132, 125, 0.56)"></canvas>
+
+<script>
+
+
+
+    var game = document.getElementById('game');
+    var c = game.getContext('2d');
+
+    var widthGame  =  game.clientWidth;
+    var heightGame =  game.clientHeight;
+    var circleR = 2;
+    var posX = 111, posY = 2;
+
+    var dotIndex = 0;
+    var dotList = {};
+    var frame = 0;
+
+    var bammList = [];
+
+    var hole = {
+        x: 50,
+        y: 150,
+        keyUp: false,
+        keyLeft:false,
+        keyDown:false,
+        keyRight:false,
+        step: 2
+    };
+
+
+    var cirle1 = {
+        x:100,
+        y:150,
+        r:15,
+        color: 'blue'
+    };
+
+    var cirle2 = {
+        x:150,
+        y:50,
+        r:20,
+        color: 'red'
+    };
+    var cirle3 = {
+        x:20,
+        y:170,
+        r:10,
+        color: 'yellow'
+    };
+
+
+    var cirle4 = {
+        x:220,
+        y:170,
+        r:40,
+        color: 'green'
+    };
+
+
+    var cirle5 = {
+        x:40,
+        y:270,
+        r:30,
+        color: 'orange'
+    };
+
+    var circles_list = [cirle1, cirle2, cirle3, cirle4, cirle5];
+
+    function Dot(x,y,r, posX, posY , dotLife, status){
+        dotIndex++;
+        this.x = x || hole.x;
+        this.y = y || hole.y;
+        this.posX = posX || 5  -  Math.random()*10;
+        this.posY = posY || 5  - Math.random()*10;
+        this.id = dotIndex;
+        this.gravity = 1;
+        this.dotLife  = 0;
+        this.dotLifeMax = dotLife ||  1000;
+        this.r = r || 2;
+        this.color = 'white';
+        this.status = status;
+        dotList[this.id] = this;
+
+    };
+
+    Dot.prototype.drawBamm = function () {
+        new Dot(this.x , this.y , this.r, 5 ,5, 25,true);
+        new Dot(this.x , this.y , this.r, 0 ,5, 25,true);
+        new Dot(this.x , this.y , this.r, 5 ,0, 25,true);
+    };
+
+    function isCollision(circle1, circle2) {
+
+        if (!circle1.status || !circle2.status) {
+            var circle1 = {r: circle1.r, x: circle1.x, y: circle1.y};
+            var circle2 = {r: circle2.r, x: circle2.x, y: circle2.y};
+
+            var dx = circle1.x - circle2.x;
+            var dy = circle1.y - circle2.y;
+            var distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < circle1.r + circle2.r) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    Dot.prototype.draw = function(){
+        var self = this;
+
+        this.dotLife++;
+
+
+
+
+        if(this.dotLife >= this.dotLifeMax){
+            delete dotList[this.id];
+        };
+
+
+        if(frame % 10 === 0 && !this.status ) {
+            this.posX =  5 - Math.random() * 10;
+            this.posY = 5 - Math.random() * 10;
+           
+        };
+
+        this.x += this.posX ;
+        this.y += this.posY ;
+
+
+
+
+        c.beginPath();
+        c.fillStyle = this.color;
+        c.arc(this.x, this.y, this.r, 0, 2*Math.PI,false);
+        c.fill();
+
+     };
+
+    setInterval(function () {
+        frame++;
+        holePositionUpdate();
+
+        if(frame % 50 === 0 ) new Dot();
+        c.fillStyle = 'rgba(0,0,0, 0.3';
+        c.fillRect(0,0, widthGame, heightGame);
+
+
+        c.beginPath();
+        c.strokeStyle = 'white';
+        c.lineWidth = '2px';
+        c.arc(hole.x,hole.y,5, 0,2*Math.PI, false);
+        c.stroke();
+
+        c.beginPath();
+        c.fillStyle = 'red';
+
+        for(var i=0; i<circles_list.length; i++){
+
+            var r = circles_list[i];
+            c.beginPath();
+            c.fillStyle = r.color;
+            c.arc(r.x,r.y,r.r, 0, 2*Math.PI, false);
+            c.fill()
+        };
+
+
+        for (var d in dotList) {
+
+            dotList[d].draw();
+            for (var j = 0; j < circles_list.length; j++) {
+
+                var isCollided = isCollision(dotList[d], circles_list[j]);
+                    if (isCollided) {
+                        dotList[d].color = circles_list[j].color;
+//                        dotList[d].drawBamm();
+
+
+                    }
+                }
+            };
+    }, 40);
+
+
+    document.onkeydown = function(event){
+
+        if(event.keyCode == 37 || event.keyCode == 65) hole.keyLeft = true;
+        if(event.keyCode == 38 || event.keyCode == 87) hole.keyUp = true;
+        if(event.keyCode == 39 || event.keyCode == 68) hole.keyRight = true;
+        if(event.keyCode == 40 || event.keyCode == 83) hole.keyDown = true;
+
+    };
+
+    document.onkeyup = function(event){
+        if(event.keyCode == 37 || event.keyCode == 65) hole.keyLeft = false;
+        if(event.keyCode == 38 || event.keyCode == 87) hole.keyUp = false;
+        if(event.keyCode == 39 || event.keyCode == 68) hole.keyRight = false;
+        if(event.keyCode == 40 || event.keyCode == 83) hole.keyDown = false;
+
+    };
+
+
+    function holePositionUpdate(){
+        if(hole.keyLeft) hole.x -= hole.step;
+        if(hole.keyUp) hole.y -= hole.step ;
+        if(hole.keyRight) hole.x += hole.step;
+        if(hole.keyDown) hole.y += hole.step ;
+
+        if(hole.x < 0 ) hole.x=0;
+        if(hole.y < 0 ) hole.y=0;
+        if (hole.x > widthGame - hole.w)   hole.x = widthGame  - hole.w;
+        if (hole.y > heightGame -  hole.h) hole.y = heightGame - hole.h ;
+    };
+
+</script>
+</body>
+</html>

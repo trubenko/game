@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Document</title>
+    <script src="../jquery.js"></script>
+    <style>
+
+    </style>
+</head>
+<body>
+
+<canvas id="field" width="500" height="500" style="border: 1px solid black"></canvas>
+
+<script>
+    var field = document.getElementById('field');
+    var ctx = field.getContext('2d');
+    ctx.font = '20px Arial';
+    ctx.fillText('P', 40, 50);
+
+    var countFrame = 0;
+    var HEIGHT = 500;
+    var WIDTH = 500;
+
+
+    var player = {
+        h: 20,
+        w: 20,
+        x: 20,
+        speedX: 5,
+        y: 20,
+        speedY: 10,
+        name: 'P',
+        hp: 10,
+        score: 0,
+        id: 'P1',
+        keyUp: false,
+        keyLeft:false,
+        keyDown:false,
+        keyRight:false,
+        step: 10,
+        angleAim : 0
+    };
+
+    var enemy_list = {};
+    var bullet_list = {};
+    var hp_list = {};
+
+
+
+    function Enemy(w, h, x, speedX, y, speedY, name, id , color) {
+
+        var enemy = {
+            w: w,
+            h: h,
+
+            x: x,
+            speedX: speedX,
+            y: y,
+            speedY: speedY,
+            name: name,
+            id: id,
+            color: color
+        };
+        enemy_list[id] = enemy;
+    };
+
+
+    function Bullet(w, h, x, speedX, y, speedY, name, id , color, lifeTime) {
+
+        var bullet = {
+            w: w,
+            h: h,
+
+            x: x,
+            speedX: speedX,
+            y: y,
+            speedY: speedY,
+            name: name,
+            id: id,
+            color: color,
+            lifeTime: lifeTime
+        };
+        bullet_list[id] = bullet ;
+    };
+
+
+    function HP(w, h, x, speedX, y, speedY, name, id , color) {
+
+        var hp = {
+            w: w,
+            h: h,
+
+            x: x,
+            speedX: speedX,
+            y: y,
+            speedY: speedY,
+            name: name,
+            id: id,
+            color: color
+
+        };
+        hp_list[id] = hp ;
+    };
+
+    function randomCreateHP() {
+//        var colors = ['silver' , 'gray' , 'black', 'maroon', 'red', 'orange' , 'yellow', 'olive', 'lime' ,'green', 'aqua', 'blue', 'navy', 'teal', 'fuchsia','purple'];
+        var color = 'orange';
+        var w = 5;
+        var h = 5;
+        var x = 10 + Math.random() * WIDTH;
+        var speedX = 0;
+        var y = 10 + Math.random() * HEIGHT;
+        var speedY = 0;
+        var name = 'HP';
+        var id = Math.random();
+//        var color = Math.ceil(Math.random()*colors.length - 1);
+
+
+
+        HP(w, h, x, speedX, y, speedY, name, id, color);
+
+    };
+
+    function randomCreateBullet() {
+        var colors = ['silver' , 'gray' , 'black', 'maroon', 'red', 'orange' , 'yellow', 'olive', 'lime' ,'green', 'aqua', 'blue', 'navy', 'teal', 'fuchsia','purple'];
+        var color = 'black';
+        var w = 5;
+        var h = 5;
+        var angular = player.angleAim;
+
+        var x = player.x;
+        var speedX = Math.cos(angular/180*Math.PI)*20;
+        var y = player.y;
+        var speedY = Math.sin(angular/180*Math.PI)*20;
+        var name = 'B';
+        var lifeTime = 100; // 4 seconds
+        var id = Math.random();
+
+        Bullet(w, h, x, speedX, y, speedY, name, id, color, lifeTime);
+
+    };
+
+    function randomCreateEnemy() {
+        var colors = ['silver' , 'gray' , 'black', 'maroon', 'red', 'orange' , 'yellow', 'olive', 'lime' ,'green', 'aqua', 'blue', 'navy', 'teal', 'fuchsia','purple'];
+
+        var w = 5 + Math.random() * 25;
+        var h = 5 + Math.random() * 25;
+
+        var x = 10 + Math.random() * 500;
+        var speedX = 1 + Math.random() * 15;
+        var y = 10 + Math.random() * 500;
+        var speedY = 1 + Math.random() * 15;
+        var name = 'E';
+        var id = Math.random();
+        var color = Math.ceil(Math.random()*colors.length - 1);
+
+        Enemy(w, h, x, speedX, y, speedY, name, id, colors[color]);
+    };
+
+
+    // Collision start  --
+
+
+    function getPositionBetweenEntities(entity1, entity2) {
+        var rect1 = {
+            x: entity1.x,
+            y: entity1.y,
+            w: entity1.w,
+            h: entity1.h
+        };
+        var rect2 = {
+            x: entity2.x,
+            y: entity2.y,
+            w: entity2.w,
+            h: entity2.h
+        };
+        // https://developer.mozilla.org/en-US/docs/Games/Techniques/2D_collision_detection
+        return testCollision(rect1, rect2);
+    };
+
+    function testCollision(rect1, rect2) {
+
+        return rect1.x < rect2.x + rect2.w &&
+                rect1.x + rect1.w > rect2.x &&
+                rect1.y < rect2.y + rect2.h &&
+                rect1.h + rect1.y > rect2.y;
+
+    };
+    //---- collision end
+
+    function drawPlayer(entity) {
+        ctx.save();
+        ctx.fillStyle = 'red';
+        ctx.fillRect(entity.x, entity.y, entity.w, entity.h);
+
+        if (entity.y > HEIGHT || entity.y < 0) entity.speedY = -entity.speedY;
+        if (entity.x > WIDTH || entity.x < 0) entity.speedX = -entity.speedX;
+        ctx.restore();
+    };
+
+    function drawEntities(entity) {
+        ctx.save();
+        ctx.fillStyle = entity.color;
+        ctx.fillRect(entity.x += entity.speedX, entity.y += entity.speedY, entity.w, entity.h);
+
+        // if bounce on edges  - reflect bounce
+        if (entity.y > HEIGHT - entity.h || entity.y < 0) entity.speedY = -entity.speedY;
+        if (entity.x > WIDTH - entity.w || entity.x < 0) entity.speedX = -entity.speedX;
+
+        ctx.restore();
+    };
+
+    function updateGame() {
+
+        countFrame++;
+
+
+        if (countFrame % 100 === 0) randomCreateEnemy(); // every 4 sec
+        if (countFrame % 75 === 0) randomCreateHP(); // every 3 sec
+        if (countFrame % 75 === 0) randomCreateBullet(); // every 3 sec
+        ctx.clearRect(0, 0, WIDTH, HEIGHT);
+
+        // Draw bullets and check collision
+        for(var bullet in bullet_list){
+            bullet_list[bullet].lifeTime--;
+            if(bullet_list[bullet].lifeTime <= 0){
+                delete bullet_list[bullet];
+                break;
+            }
+
+            drawEntities(bullet_list[bullet]);
+
+            for (var person in enemy_list) {
+
+                var isCollisionEN_BULL = getPositionBetweenEntities(bullet_list[bullet],enemy_list[person]);
+
+                if(isCollisionEN_BULL){
+                    player.hp += 10;
+                    delete bullet_list[bullet];
+                    delete enemy_list[person];
+                    break;
+
+                }
+            }
+        }
+
+        // Check collision player and random created health , count SCORE
+        for(var hp in hp_list){
+
+            drawEntities(hp_list[hp]);
+            var isCollisionHP_PL = getPositionBetweenEntities(player, hp_list[hp]);
+            if(isCollisionHP_PL){
+                player.score +=100 ;
+                delete hp_list[hp];
+            }
+        };
+
+        // Draw enemies , check collision
+        for (var key in enemy_list) {
+            drawEntities(enemy_list[key]);
+
+
+            var isCollision = getPositionBetweenEntities(player, enemy_list[key]);
+//            console.log(isCollision);
+
+            if (isCollision) {
+
+                if (player.hp <= 0) {
+                    startGame();
+                    break;
+                }
+
+                player.hp--;
+
+            }
+        };
+
+        playerPositionUpdate();
+        drawPlayer(player);
+        ctx.fillText(player.hp + ":HP", 10, 20);
+        ctx.fillText("Score: " + player.score, 100, 20);
+
+    } ;
+
+    // Player control keyboards
+    document.onkeydown = function(event){
+
+        if(event.keyCode == 37 || event.keyCode == 65) player.keyLeft = true;
+        if(event.keyCode == 38 || event.keyCode == 87) player.keyUp = true;
+        if(event.keyCode == 39 || event.keyCode == 68) player.keyRight = true;
+        if(event.keyCode == 40 || event.keyCode == 83) player.keyDown = true;
+
+    };
+
+    document.onkeyup = function(event){
+
+
+        if(event.keyCode == 37 || event.keyCode == 65) player.keyLeft = false;
+        if(event.keyCode == 38 || event.keyCode == 87) player.keyUp = false;
+        if(event.keyCode == 39 || event.keyCode == 68) player.keyRight = false;
+        if(event.keyCode == 40 || event.keyCode == 83) player.keyDown = false;
+
+    };
+
+
+    function playerPositionUpdate(){
+
+        if(player.keyLeft) player.x -= player.step;
+        if(player.keyUp) player.y -= player.step ;
+        if(player.keyRight) player.x += player.step;
+        if(player.keyDown) player.y += player.step ;
+
+
+        if(player.x < 0 ) player.x=0;
+        if(player.y < 0 ) player.y=0;
+        if (player.x > WIDTH - player.w) player.x = WIDTH - player.w;
+        if (player.y > HEIGHT -  player.h) player.y = HEIGHT - player.h ;
+
+
+    };
+
+    document.onclick = function(event){
+        randomCreateBullet();
+
+    };
+
+
+    document.onmousemove = function (event) {
+        var mX = event.clientX - field.getBoundingClientRect().left ;
+        var mY = event.clientY - field.getBoundingClientRect().top ;
+
+        mX -= player.x;
+        mY -= player.y;
+
+        player.angleAim = Math.atan2(mY, mX)/ Math.PI * 180;
+    };
+
+
+
+    function startGame() {
+        countFrame = 0;
+        enemy_list = {};
+        hp_list = {};
+        bullet_list = {};
+        player.hp = 10;
+        player.score = 0;
+
+
+        randomCreateEnemy();
+        randomCreateEnemy();
+        randomCreateEnemy();
+    };
+
+
+    startGame();
+    setInterval(updateGame, 40);
+
+
+
+</script>
+</body>
+</html>
